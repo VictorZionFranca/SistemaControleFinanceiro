@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +14,6 @@ interface SidebarProps {
 export default function Sidebar({ className }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);

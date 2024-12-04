@@ -12,10 +12,10 @@ export default function Home() {
   return (
     <>
       <main className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold text-center mb-8">Dashboard Financeiro</h1>
+        <h1 className="text-3xl font-bold text-center mb-8 text-black">Dashboard Financeiro</h1>
 
         {/* Resumo do Mês */}
-        <section className="bg-gray-100 rounded-lg shadow-md p-6 mb-8">
+        <section className="bg-gray-100 rounded-lg shadow-md p-6 mb-8 text-black">
           <h2 className="text-2xl font-semibold mb-4">Resumo do Mês</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
@@ -36,7 +36,7 @@ export default function Home() {
         </section>
 
         {/* Estatísticas de Despesas */}
-        <section className="bg-gray-100 rounded-lg shadow-md p-6">
+        <section className="bg-gray-100 rounded-lg shadow-md p-6 text-black">
           <h2 className="text-2xl font-semibold mb-4">Estatísticas de Despesas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-lg shadow p-4">
