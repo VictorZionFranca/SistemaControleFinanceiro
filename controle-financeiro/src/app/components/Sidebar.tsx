@@ -29,7 +29,7 @@ export default function Sidebar({ className }: SidebarProps) {
     >
       <button
         onClick={toggleSidebar}
-        className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-1 text-2xl"
+        className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-3 text-2xl"
       >
         {isOpen ? <BsList /> : <BsList />}
       </button>
@@ -44,7 +44,7 @@ export default function Sidebar({ className }: SidebarProps) {
           ].map((item, index) => (
             <Link href={item.href} key={item.href}>
               <li
-                className={`flex items-center py-2 mb-1 px-6 font-medium text-sm rounded-lg transition-all duration-300 ${pathname === item.href
+                className={`flex items-center py-3 mb-3 px-6 font-medium text-sm rounded-lg transition-all duration-300 ${pathname === item.href
                   ? "bg-gray-700 text-blue-500"
                   : "hover:bg-gray-600"
                   }`}

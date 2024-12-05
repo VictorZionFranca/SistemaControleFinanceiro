@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebaseConfig';
+import { FaEdit, FaTrashAlt } from 'react-icons/fa';
 
 interface Movimentacao {
   id: string;
@@ -171,16 +172,16 @@ export default function VerMovimentacoes() {
                       <td className="p-3 text-sm">{movimentacao.situacao || '-'}</td>
                       <td className="p-3 text-sm">
                         <button
-                          className="text-blue-500 hover:text-blue-700"
+                          className="text-yellow-500 hover:text-yellow-700"
                           onClick={() => openModal(movimentacao)}
                         >
-                          Editar
+                          <FaEdit className="text-lg" />
                         </button>
                         <button
                           className="text-red-500 hover:text-red-700 ml-4"
                           onClick={() => openDeleteModal(movimentacao)}
                         >
-                          Excluir
+                          <FaTrashAlt className="text-lg" />
                         </button>
                       </td>
                     </tr>
