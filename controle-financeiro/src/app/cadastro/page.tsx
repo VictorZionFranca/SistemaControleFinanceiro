@@ -1,67 +1,94 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebaseConfig';
+
+// Interface para representar os dados da movimentação
+interface Movimentacao {
+    tipo: 'receita' | 'despesa';
+    valor: number;
+    data: string;
+    descricao: string;
+    despesaTipo?: 'fixa' | 'variavel';
+    meses?: number;
+    situacao?: 'pago' | 'pendente';
+}
 
 export default function CadastroMovimentacao() {
-    const [formData, setFormData] = useState({
-        tipo: 'receita', // Receita ou Despesa
-        valor: '',
+    const [formData, setFormData] = useState<Movimentacao>({
+        tipo: 'receita',
+        valor: 0,
         data: '',
         descricao: '',
-        despesaTipo: '', // Fixa ou Variável
-        meses: 1, // Número de meses para despesas fixas
-        situacao: 'pendente' // Situação de pagamento (aplica-se a despesas)
     });
     const [error, setError] = useState<string | null>(null);
-    const router = useRouter();
+    const [showNotification, setShowNotification] = useState<boolean>(false);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
+
         setFormData((prev) => ({
             ...prev,
-            [name]: value
+            [name]: name === 'valor' || name === 'meses' ? parseFloat(value) || 0 : value,
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+    
         // Validação simples
         if (!formData.valor || !formData.data || !formData.descricao) {
             setError('Todos os campos são obrigatórios.');
             return;
         }
-
-        // Validação para despesas fixas
-        if (formData.tipo === 'despesa' && formData.despesaTipo === 'fixa' && formData.meses <= 0) {
-            setError('Por favor, informe um número de meses válido.');
-            return;
+    
+        // Criando um objeto para enviar para o Firebase
+        let movimentacaoComSituacao = { ...formData };
+    
+        // Se for uma despesa, garantir que o campo "situacao" seja enviado
+        if (formData.tipo === 'despesa') {
+            movimentacaoComSituacao = {
+                ...movimentacaoComSituacao,
+                situacao: formData.situacao || 'pendente', // Se "situacao" não foi preenchido, define como 'pendente'
+            };
+        } else {
+            // Se for receita, garantir que o campo "situacao" não seja enviado
+            delete movimentacaoComSituacao.situacao;
         }
-
-        // Validação para despesas
-        if (formData.tipo === 'despesa' && !formData.situacao) {
-            setError('Por favor, informe a situação da despesa (pago ou pendente).');
-            return;
+    
+        try {
+            // Enviando para o Firebase
+            await addDoc(collection(db, 'movimentacoes'), movimentacaoComSituacao);
+    
+            // Exibindo notificação de sucesso
+            setShowNotification(true);
+            setError(null);
+    
+            // Limpa o formulário
+            setFormData({
+                tipo: 'receita',
+                valor: 0,
+                data: '',
+                descricao: '',
+                situacao: 'pendente', // Resetando o valor de "situacao" para o padrão
+            });
+    
+            // Oculta a notificação após 2 segundos
+            setTimeout(() => setShowNotification(false), 2500);
+        } catch (error) {
+            console.error('Erro ao registrar movimentação:', error);
+            setError('Erro ao registrar movimentação.');
         }
-
-        // Aqui você pode adicionar a lógica para enviar os dados para o backend.
-        // Simulação de envio bem-sucedido:
-        setError(null);
-        console.log('Movimentação registrada:', formData);
-
-        // Redirecionando para a página de lista de movimentações ou para o dashboard
-        router.push('/movimentacoes');
-    };
+    };    
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-black">
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-black relative">
             <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
                 <h2 className="text-2xl font-semibold mb-4">Cadastro de Movimentação</h2>
 
-                {/* Exibindo mensagem de erro */}
                 {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
@@ -81,7 +108,6 @@ export default function CadastroMovimentacao() {
                         </select>
                     </div>
 
-                    {/* Campos específicos para despesas */}
                     {formData.tipo === 'despesa' && (
                         <>
                             <div className="mb-4">
@@ -91,7 +117,7 @@ export default function CadastroMovimentacao() {
                                 <select
                                     id="despesaTipo"
                                     name="despesaTipo"
-                                    value={formData.despesaTipo}
+                                    value={formData.despesaTipo || ''}
                                     onChange={handleChange}
                                     className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                 >
@@ -110,7 +136,7 @@ export default function CadastroMovimentacao() {
                                         id="meses"
                                         name="meses"
                                         type="number"
-                                        value={formData.meses}
+                                        value={formData.meses || 1}
                                         onChange={handleChange}
                                         min="1"
                                         className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
@@ -125,7 +151,7 @@ export default function CadastroMovimentacao() {
                                 <select
                                     id="situacao"
                                     name="situacao"
-                                    value={formData.situacao}
+                                    value={formData.situacao || 'pendente'}
                                     onChange={handleChange}
                                     className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                 >
@@ -135,7 +161,6 @@ export default function CadastroMovimentacao() {
                             </div>
                         </>
                     )}
-
                     <div className="mb-4">
                         <label htmlFor="valor" className="block text-sm font-medium text-gray-700">
                             Valor
@@ -144,7 +169,7 @@ export default function CadastroMovimentacao() {
                             id="valor"
                             name="valor"
                             type="number"
-                            value={formData.valor}
+                            value={formData.valor || ''}
                             onChange={handleChange}
                             className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                             required
@@ -189,6 +214,12 @@ export default function CadastroMovimentacao() {
                     </button>
                 </form>
             </div>
+
+            {showNotification && (
+                <div className="fixed bottom-4 right-4 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg">
+                    Movimentação registrada com sucesso!
+                </div>
+            )}
         </div>
     );
 }
