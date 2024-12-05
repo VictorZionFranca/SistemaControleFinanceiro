@@ -21,7 +21,7 @@ export default function RootLayout({
         {/* Conteúdo principal, com margem à esquerda para evitar sobreposição com o Sidebar */}
         <div className="flex-1 min-h-screen bg-gray-100 ml-16"> {/* ml-16 para dar espaço ao sidebar */}
           {/* Header fixo no topo */}
-          <Header className="fixed top-0 left-0 right-0 z-10" />
+          <Header className="fixed top-0 left-0 right-0" />
           
           {/* Conteúdo que começa após o header */}
           <main className="p-4 pt-20">{children}</main> {/* pt-20 para deixar espaço abaixo do header fixo */}

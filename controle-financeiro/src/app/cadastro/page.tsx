@@ -30,59 +30,59 @@ export default function CadastroMovimentacao() {
     ) => {
         const { name, value } = e.target;
 
-        setFormData((prev) => ({
-            ...prev,
-            [name]: name === 'valor' || name === 'meses' ? parseFloat(value) || 0 : value,
-        }));
+        setFormData((prev) => {
+            // Se o tipo de despesa for "variavel", define automaticamente como "pago"
+            if (name === 'despesaTipo' && value === 'variavel') {
+                return {
+                    ...prev,
+                    [name]: value,
+                    situacao: 'pago', // Define como pago automaticamente
+                };
+            }
+
+            // Caso a despesa seja "fixa", permite a escolha da situação
+            if (name === 'despesaTipo' && value === 'fixa') {
+                return {
+                    ...prev,
+                    [name]: value,
+                    situacao: 'pendente', // Restaura o padrão para "pendente"
+                };
+            }
+
+            return {
+                ...prev,
+                [name]: name === 'valor' || name === 'meses' ? parseFloat(value) || 0 : value,
+            };
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-    
-        // Validação simples
+
         if (!formData.valor || !formData.data || !formData.descricao) {
             setError('Todos os campos são obrigatórios.');
             return;
         }
-    
-        // Criando um objeto para enviar para o Firebase
-        let movimentacaoComSituacao = { ...formData };
-    
-        // Se for uma despesa, garantir que o campo "situacao" seja enviado
-        if (formData.tipo === 'despesa') {
-            movimentacaoComSituacao = {
-                ...movimentacaoComSituacao,
-                situacao: formData.situacao || 'pendente', // Se "situacao" não foi preenchido, define como 'pendente'
-            };
-        } else {
-            // Se for receita, garantir que o campo "situacao" não seja enviado
-            delete movimentacaoComSituacao.situacao;
-        }
-    
+
         try {
-            // Enviando para o Firebase
-            await addDoc(collection(db, 'movimentacoes'), movimentacaoComSituacao);
-    
-            // Exibindo notificação de sucesso
+            await addDoc(collection(db, 'movimentacoes'), formData);
+
             setShowNotification(true);
             setError(null);
-    
-            // Limpa o formulário
+
             setFormData({
                 tipo: 'receita',
                 valor: 0,
                 data: '',
                 descricao: '',
-                situacao: 'pendente', // Resetando o valor de "situacao" para o padrão
             });
-    
-            // Oculta a notificação após 2 segundos
+
             setTimeout(() => setShowNotification(false), 2500);
         } catch (error) {
             console.error('Erro ao registrar movimentação:', error);
             setError('Erro ao registrar movimentação.');
         }
-    };    
+    };
 
     return (
         <div className="flex items-center justify-center text-black">
@@ -129,6 +129,24 @@ export default function CadastroMovimentacao() {
 
                             {formData.despesaTipo === 'fixa' && (
                                 <div className="mb-4">
+                                    <label htmlFor="situacao" className="block text-sm font-medium text-gray-700">
+                                        Situação da Despesa
+                                    </label>
+                                    <select
+                                        id="situacao"
+                                        name="situacao"
+                                        value={formData.situacao || 'pendente'}
+                                        onChange={handleChange}
+                                        className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                        <option value="pendente">Pendente</option>
+                                        <option value="pago">Pago</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {formData.despesaTipo === 'fixa' && (
+                                <div className="mb-4">
                                     <label htmlFor="meses" className="block text-sm font-medium text-gray-700">
                                         Quantos meses será registrada?
                                     </label>
@@ -143,24 +161,9 @@ export default function CadastroMovimentacao() {
                                     />
                                 </div>
                             )}
-
-                            <div className="mb-4">
-                                <label htmlFor="situacao" className="block text-sm font-medium text-gray-700">
-                                    Situação da Despesa
-                                </label>
-                                <select
-                                    id="situacao"
-                                    name="situacao"
-                                    value={formData.situacao || 'pendente'}
-                                    onChange={handleChange}
-                                    className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="pendente">Pendente</option>
-                                    <option value="pago">Pago</option>
-                                </select>
-                            </div>
                         </>
                     )}
+
                     <div className="mb-4">
                         <label htmlFor="valor" className="block text-sm font-medium text-gray-700">
                             Valor
