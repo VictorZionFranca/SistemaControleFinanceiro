@@ -6,6 +6,7 @@ import { Chart } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import jsPDF from 'jspdf';
 import { DocumentData } from 'firebase/firestore';
+import { FaFileDownload } from "react-icons/fa";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -16,13 +17,13 @@ type Movimentacao = {
   tipo: 'receita' | 'despesa';
   situacao: 'paga' | 'pendente';
   despesaTipo?: string;
-  meses?: number;
+  meses?: number[];  // Alterado para array de números (meses)
 };
 
 const Relatorio: React.FC = () => {
   const [dados, setDados] = useState<Movimentacao[]>([]);
   const [tipo, setTipo] = useState<'receita' | 'despesa' | 'todos'>('todos');
-  const [situacao, setSituacao] = useState<'paga' | 'pendente'>('paga');
+  const [situacao, setSituacao] = useState<'paga' | 'pendente' | 'todos'>('todos');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
 
@@ -31,14 +32,12 @@ const Relatorio: React.FC = () => {
       let rawData: DocumentData[] = [];
       let data: Movimentacao[] = [];
 
-      // Busca os dados de acordo com o tipo selecionado
       if (tipo === 'todos') {
         rawData = await getRelatorioMensal(mes, ano);
       } else {
         rawData = await getRelatorioPorTipo(tipo);
       }
 
-      // Mapeamento para garantir compatibilidade com Movimentacao
       data = rawData.map((item) => ({
         descricao: item.descricao ?? '',
         valor: item.valor ?? 0,
@@ -46,25 +45,24 @@ const Relatorio: React.FC = () => {
         tipo: item.tipo === 'receita' ? 'receita' : 'despesa',
         situacao: item.situacao ?? 'paga',
         despesaTipo: item.despesaTipo ?? '',
-        meses: item.meses ?? 0,  // Certifique-se de incluir o campo 'meses' aqui, se necessário
+        meses: Array.isArray(item.meses) ? item.meses : [],  // Garante que meses seja um array
       }));
 
-      console.log('Dados filtrados antes da situação', data); // Verifique os dados no console
-
-      // Filtro por tipo (despesa ou receita)
       if (tipo !== 'todos') {
         data = data.filter((item) => item.tipo === tipo);
       }
 
-      // Filtro por situação (paga ou pendente) - garantindo que não haja espaços extras
-      if (situacao) {
-        console.log('Filtro aplicado para situação:', situacao); // Verifique se o valor de situação está correto
-        data = data.filter((item) => item.situacao.trim() === situacao);
+      if (situacao !== 'todos') {
+        data = data.filter(
+          (item) => item.situacao.trim().toLowerCase() === situacao.trim().toLowerCase()
+        );
       }
 
-      // Filtro por mês e ano
       data = data.filter((item) => {
         const itemDate = new Date(item.data);
+        if (isNaN(itemDate.getTime())) {
+          return false;
+        }
         return itemDate.getMonth() + 1 === mes && itemDate.getFullYear() === ano;
       });
 
@@ -74,7 +72,6 @@ const Relatorio: React.FC = () => {
     fetchDados();
   }, [tipo, situacao, mes, ano]);
 
-  // Calcular totais de receitas e despesas
   const totalReceitas = dados.filter((mov) => mov.tipo === 'receita').reduce((acc, mov) => acc + mov.valor, 0);
   const totalDespesas = dados.filter((mov) => mov.tipo === 'despesa').reduce((acc, mov) => acc + mov.valor, 0);
 
@@ -89,44 +86,49 @@ const Relatorio: React.FC = () => {
     ],
   };
 
-  // Função para gerar o relatório em PDF
+  const formatarDataBrasileira = (data: string): string => {
+    const dataObj = new Date(data);
+    const dia = dataObj.getDate().toString().padStart(2, '0');
+    const mes = (dataObj.getMonth() + 1).toString().padStart(2, '0');
+    const ano = dataObj.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  };
+
   const gerarPDFRelatorio = () => {
     const doc = new jsPDF();
-
-    // Definindo fonte
     doc.setFontSize(16);
 
-    // Título centralizado
     const titulo = 'Relatório Financeiro';
     const tituloX = (doc.internal.pageSize.width - doc.getTextWidth(titulo)) / 2;
     doc.text(titulo, tituloX, 20);
 
-    // Adicionando uma linha logo abaixo do título
-    doc.setLineWidth(0.5);
-    doc.line(10, 25, doc.internal.pageSize.width - 10, 25);
-
-    // Adicionando a data do relatório
     const dataInicio = `01/${mes.toString().padStart(2, '0')}/${ano}`;
-    const dataFim = new Date(ano, mes, 0); // último dia do mês
-    const dataFimFormatada = `${dataFim.getDate().toString().padStart(2, '0')}/${(mes).toString().padStart(2, '0')}/${ano}`;
+    const dataFim = new Date(ano, mes, 0);
+    const dataFimFormatada = `${dataFim.getDate().toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
     const periodo = `Período: de ${dataInicio} a ${dataFimFormatada}`;
 
     doc.setFontSize(12);
     doc.text(periodo, 10, 30);
-
-    // Linha de separação entre período e totais
     doc.line(10, 35, doc.internal.pageSize.width - 10, 35);
 
-    // Seção de Totais
+    const despesasPendentes = dados.filter(
+      (mov) => mov.tipo === 'despesa' && mov.situacao === 'pendente'
+    );
+    const totalDespesasPendentes = despesasPendentes.reduce((acc, mov) => acc + mov.valor, 0);
+
     doc.text(`Total de Receitas: R$ ${totalReceitas.toFixed(2)}`, 10, 45);
     doc.text(`Total de Despesas: R$ ${totalDespesas.toFixed(2)}`, 10, 50);
     doc.text(`Saldo: R$ ${(totalReceitas - totalDespesas).toFixed(2)}`, 10, 55);
+    doc.text(`Total de Despesas Pendentes: R$ ${totalDespesasPendentes.toFixed(2)}`, 10, 60);
 
-    // Linha de separação entre totais e movimentações
-    doc.line(10, 60, doc.internal.pageSize.width - 10, 60);
+    doc.line(10, 65, doc.internal.pageSize.width - 10, 65);
 
-    let yOffset = 70;
+    let yOffset = 75;
     dados.forEach((movimentacao, index) => {
+      if (movimentacao.tipo === 'despesa' && movimentacao.situacao === 'pendente') {
+        return;
+      }
+
       doc.setFontSize(12);
       doc.text(`Movimentação ${index + 1}:`, 10, yOffset);
       yOffset += 5;
@@ -134,97 +136,85 @@ const Relatorio: React.FC = () => {
       yOffset += 5;
       doc.text(`Valor: R$ ${movimentacao.valor.toFixed(2)}`, 10, yOffset);
       yOffset += 5;
-      doc.text(`Data: ${movimentacao.data}`, 10, yOffset);
+      doc.text(`Data: ${formatarDataBrasileira(movimentacao.data)}`, 10, yOffset);
       yOffset += 5;
       doc.text(`Tipo: ${movimentacao.tipo === 'receita' ? 'Receita' : 'Despesa'}`, 10, yOffset);
 
-      // Verificação para despesas, mostrando mais detalhes
       if (movimentacao.tipo === 'despesa') {
-        if (movimentacao.despesaTipo === 'fixa') {
-          yOffset += 10;
-          doc.text(`Tipo de Despesa: Fixa`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Situação: ${movimentacao.situacao === 'paga' ? 'Pago' : 'Pendente'}`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Tipo de Despesa: ${movimentacao.despesaTipo === 'fixa' ? 'Fixa' : 'Variável'}`, 10, yOffset);
+
+        // Se a despesa for fixa, exibir o intervalo de meses
+        if (movimentacao.despesaTipo === 'fixa' && movimentacao.meses && movimentacao.meses.length > 0) {
           yOffset += 5;
-          // Verifica se meses é um número e exibe corretamente
-          if (typeof movimentacao.meses === 'number' && movimentacao.meses > 0) {
-            doc.text(`Meses: ${movimentacao.meses}`, 10, yOffset); // Aqui é apenas o valor do número
-          } else {
-            doc.text(`Meses: Não definido`, 10, yOffset);
-          }
-        } else if (movimentacao.despesaTipo === 'variavel') {
-          yOffset += 10;
-          doc.text(`Tipo de Despesa: Variável`, 10, yOffset);
-          yOffset += 5;
+          const mesesOrdenados = [...movimentacao.meses].sort((a, b) => a - b);
+          const primeiroMes = mesesOrdenados[0];
+          const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+
+          // Calculando ano e mês
+          const primeiroAno = Math.floor(primeiroMes / 12);
+          const primeiroMesNome = (primeiroMes % 12) + 1;
+          const ultimoAno = Math.floor(ultimoMes / 12);
+          const ultimoMesNome = (ultimoMes % 12) + 1;
+
+          // Formatando os meses
+          const intervalo = `${primeiroMesNome.toString().padStart(2, '0')}/${primeiroAno} a ${ultimoMesNome.toString().padStart(2, '0')}/${ultimoAno}`;
+          doc.text(`Meses: ${intervalo}`, 10, yOffset);
         }
-        doc.text(`Situação: ${movimentacao.situacao === 'paga' ? 'Pago' : 'Pendente'}`, 10, yOffset + 10);
-        yOffset += 15;
       }
 
-      yOffset += 10; // Espaço entre movimentações
+      yOffset += 10;
 
       if (index < dados.length - 1) {
-        doc.setLineWidth(0.5);
         doc.line(10, yOffset, doc.internal.pageSize.width - 10, yOffset);
         yOffset += 5;
       }
+
+      if (yOffset > 270) {
+        doc.addPage();
+        yOffset = 10;
+      }
     });
 
-    // Se o conteúdo ultrapassar a página, adicionar uma nova
-    if (yOffset > 260) {
-      doc.addPage();
-      yOffset = 10;
-      doc.text('Relatório Financeiro (continuação)', 10, yOffset);
-    }
-
-    // Seção para adicionar as despesas pendentes ao final do relatório
-    const despesasPendentes = dados.filter(movimentacao => movimentacao.tipo === 'despesa' && movimentacao.situacao === 'pendente');
-
     if (despesasPendentes.length > 0) {
-      doc.addPage();  // Adiciona uma nova página para as despesas pendentes
+      if (yOffset > 250) {
+        doc.addPage();
+        yOffset = 10;
+      }
+
       doc.setFontSize(16);
-      doc.text('Despesas Pendentes', 10, 20);  // Título da seção
+      doc.text('Despesas Pendentes', 10, yOffset);
+      yOffset += 10;
 
-      let yOffsetPendente = 30;
-
-      despesasPendentes.forEach((movimentacao, index) => {
+      despesasPendentes.forEach((pendente, index) => {
         doc.setFontSize(12);
-        doc.text(`Movimentação ${index + 1}:`, 10, yOffsetPendente);
-        yOffsetPendente += 5;
-        doc.text(`Descrição: ${movimentacao.descricao}`, 10, yOffsetPendente);
-        yOffsetPendente += 5;
-        doc.text(`Valor: R$ ${movimentacao.valor.toFixed(2)}`, 10, yOffsetPendente);
-        yOffsetPendente += 5;
-        doc.text(`Data: ${movimentacao.data}`, 10, yOffsetPendente);
-        yOffsetPendente += 5;
-        doc.text(`Tipo: ${movimentacao.tipo === 'receita' ? 'Receita' : 'Despesa'}`, 10, yOffsetPendente);
+        doc.text(`Pendência ${index + 1}:`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Descrição: ${pendente.descricao}`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Valor: R$ ${pendente.valor.toFixed(2)}`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Data: ${formatarDataBrasileira(pendente.data)}`, 10, yOffset);
+        yOffset += 5;
+        doc.text(`Tipo: ${pendente.despesaTipo === 'fixa' ? 'Fixa' : 'Variável'}`, 10, yOffset);
+        yOffset += 5;
 
-        // Verificação para despesas, mostrando mais detalhes
-        if (movimentacao.tipo === 'despesa') {
-          if (movimentacao.despesaTipo === 'fixa') {
-            yOffsetPendente += 10;
-            doc.text(`Tipo de Despesa: Fixa`, 10, yOffsetPendente);
-            yOffsetPendente += 5;
-            // Verifica se meses é um número e exibe corretamente
-            if (typeof movimentacao.meses === 'number' && movimentacao.meses > 0) {
-              doc.text(`Meses: ${movimentacao.meses}`, 10, yOffsetPendente); // Aqui é apenas o valor do número
-            } else {
-              doc.text(`Meses: Não definido`, 10, yOffsetPendente);
-            }
-          } else if (movimentacao.despesaTipo === 'variavel') {
-            yOffsetPendente += 10;
-            doc.text(`Tipo de Despesa: Variável`, 10, yOffsetPendente);
-            yOffsetPendente += 5;
-          }
-
-          doc.text(`Situação: Pendente`, 10, yOffsetPendente + 10);
-          yOffsetPendente += 15;
+        // Exibir os meses das despesas pendentes
+        if (pendente.meses && pendente.meses.length > 0) {
+          const mesesFormatados = pendente.meses.map((mes) => {
+            const ano = Math.floor(mes / 12);
+            const mesNome = (mes % 12) + 1;
+            return `${mesNome.toString().padStart(2, '0')}/${ano}`;
+          });
+          doc.text(`Meses: ${mesesFormatados.join(', ')}`, 10, yOffset);
+          yOffset += 10;
         }
 
-        yOffsetPendente += 10; // Espaço entre movimentações
-
-        if (index < despesasPendentes.length - 1) {
-          doc.setLineWidth(0.5);
-          doc.line(10, yOffsetPendente, doc.internal.pageSize.width - 10, yOffsetPendente);
-          yOffsetPendente += 5;
+        if (yOffset > 270) {
+          doc.addPage();
+          yOffset = 10;
         }
       });
     }
@@ -238,37 +228,51 @@ const Relatorio: React.FC = () => {
 
       {/* Filtros */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
-        <select
-          onChange={(e) => setTipo(e.target.value as 'receita' | 'despesa' | 'todos')}
-          className="p-2 border rounded w-full sm:w-auto"
-        >
-          <option value="todos">Todos</option>
-          <option value="receita">Receitas</option>
-          <option value="despesa">Despesas</option>
-        </select>
+        <div>
+          <label className="block mb-1 font-medium">Tipo de Movimentação:</label>
+          <select
+            onChange={(e) => setTipo(e.target.value as 'receita' | 'despesa' | 'todos')}
+            className="p-2 border rounded w-full sm:w-auto"
+          >
+            <option value="todos">Todos</option>
+            <option value="receita">Receitas</option>
+            <option value="despesa">Despesas</option>
+          </select>
+        </div>
 
-        <select
-          onChange={(e) => setSituacao(e.target.value as 'paga' | 'pendente')}
-          className="p-2 border rounded w-full sm:w-auto"
-        >
-          <option value="paga">Pago</option>
-          <option value="pendente">Pendente</option>
-        </select>
+        <div>
+          <label className="block mb-1 font-medium">Situação:</label>
+          <select
+            onChange={(e) => setSituacao(e.target.value as 'paga' | 'pendente' | 'todos')}
+            className="p-2 border rounded w-full sm:w-auto"
+          >
+            <option value="todos">Todos</option>
+            <option value="paga">Pago</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </div>
 
-        <input
-          type="number"
-          value={mes}
-          onChange={(e) => setMes(Number(e.target.value))}
-          min={1}
-          max={12}
-          className="p-2 border rounded w-full sm:w-auto"
-        />
-        <input
-          type="number"
-          value={ano}
-          onChange={(e) => setAno(Number(e.target.value))}
-          className="p-2 border rounded w-full sm:w-auto"
-        />
+        <div>
+          <label className="block mb-1 font-medium">Mês:</label>
+          <input
+            type="number"
+            value={mes}
+            onChange={(e) => setMes(Number(e.target.value))}
+            min={1}
+            max={12}
+            className="p-2 border rounded w-full sm:w-auto"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1 font-medium">Ano:</label>
+          <input
+            type="number"
+            value={ano}
+            onChange={(e) => setAno(Number(e.target.value))}
+            className="p-2 border rounded w-full sm:w-auto"
+          />
+        </div>
       </div>
 
       {/* Gráfico */}
@@ -284,18 +288,28 @@ const Relatorio: React.FC = () => {
       <div className="mt-6 text-center">
         <p className="text-lg">Total de Receitas: R$ {totalReceitas.toFixed(2)}</p>
         <p className="text-lg">Total de Despesas: R$ {totalDespesas.toFixed(2)}</p>
-        <p className="text-lg">Saldo: R$ {(totalReceitas - totalDespesas).toFixed(2)}</p>
+        <p className="text-lg font-semibold">
+          Saldo: R$ {(totalReceitas - totalDespesas).toFixed(2)}
+        </p>
       </div>
 
-      {/* Exportar PDF */}
-      <div className="mt-6 text-center">
+      {/* Botão para gerar PDF */}
+      <div className="mt-8 text-center mb-10">
         <button
           onClick={gerarPDFRelatorio}
-          className="bg-blue-500 text-white p-3 rounded hover:bg-blue-600 transition duration-200 w-full sm:w-auto"
+          className="relative group bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
         >
-          Exportar para PDF
+          <FaFileDownload />
+
+          {/* Tooltip */}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 text-white text-sm rounded py-1 px-3 z-10 shadow-md pointer-events-none">
+            Gerar PDF
+            {/* Seta do Tooltip */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-gray-700"></div>
+          </div>
         </button>
       </div>
+
     </div>
   );
 };
