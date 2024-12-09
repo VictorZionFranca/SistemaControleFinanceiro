@@ -158,20 +158,6 @@ export default function VerMovimentacoes() {
     }
   };
 
-  // Função para formatar o valor monetário no padrão brasileiro
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
-  };
-
-  // Função para formatar a data no padrão brasileiro
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('pt-BR').format(date);
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-8 text-black">
       <h2 className="text-2xl font-semibold mb-6 text-center">
