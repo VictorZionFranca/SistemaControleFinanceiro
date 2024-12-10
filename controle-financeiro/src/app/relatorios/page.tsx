@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { getRelatorioMensal, getRelatorioPorTipo } from './relatoriosService';
-import { Chart } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import jsPDF from 'jspdf';
 import { DocumentData } from 'firebase/firestore';
 import { FaFileDownload } from 'react-icons/fa';
+import dynamic from 'next/dynamic';
+const Chart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Chart), { ssr: false });
+
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
