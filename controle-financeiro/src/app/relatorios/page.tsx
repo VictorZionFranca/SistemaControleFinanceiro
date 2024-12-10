@@ -6,7 +6,7 @@ import { Chart } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import jsPDF from 'jspdf';
 import { DocumentData } from 'firebase/firestore';
-import { FaFileDownload } from "react-icons/fa";
+import { FaFileDownload } from 'react-icons/fa';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -17,7 +17,7 @@ type Movimentacao = {
   tipo: 'receita' | 'despesa';
   situacao: 'paga' | 'pendente';
   despesaTipo?: string;
-  meses?: number[];  // Alterado para array de números (meses)
+  meses?: number[];
 };
 
 const Relatorio: React.FC = () => {
@@ -30,43 +30,33 @@ const Relatorio: React.FC = () => {
   useEffect(() => {
     const fetchDados = async () => {
       let rawData: DocumentData[] = [];
-      let data: Movimentacao[] = [];
-
       if (tipo === 'todos') {
         rawData = await getRelatorioMensal(mes, ano);
       } else {
         rawData = await getRelatorioPorTipo(tipo);
       }
 
-      data = rawData.map((item) => ({
+      const data: Movimentacao[] = rawData.map((item) => ({
         descricao: item.descricao ?? '',
         valor: item.valor ?? 0,
         data: item.data ?? '',
         tipo: item.tipo === 'receita' ? 'receita' : 'despesa',
         situacao: item.situacao ?? 'paga',
         despesaTipo: item.despesaTipo ?? '',
-        meses: Array.isArray(item.meses) ? item.meses : [],  // Garante que meses seja um array
+        meses: Array.isArray(item.meses) ? item.meses : [],
       }));
 
-      if (tipo !== 'todos') {
-        data = data.filter((item) => item.tipo === tipo);
-      }
-
+      // Filtrando os dados conforme os filtros aplicados
+      let filteredData = data;
       if (situacao !== 'todos') {
-        data = data.filter(
-          (item) => item.situacao.trim().toLowerCase() === situacao.trim().toLowerCase()
-        );
+        filteredData = filteredData.filter((item) => item.situacao.toLowerCase() === situacao.toLowerCase());
       }
-
-      data = data.filter((item) => {
+      filteredData = filteredData.filter((item) => {
         const itemDate = new Date(item.data);
-        if (isNaN(itemDate.getTime())) {
-          return false;
-        }
         return itemDate.getMonth() + 1 === mes && itemDate.getFullYear() === ano;
       });
 
-      setDados(data);
+      setDados(filteredData);
     };
 
     fetchDados();
@@ -227,12 +217,12 @@ const Relatorio: React.FC = () => {
       <h2 className="text-xl font-semibold mb-6 text-center">Relatório Financeiro</h2>
 
       {/* Filtros */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between">
-        <div>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+        <div className="flex-1 sm:max-w-xs">
           <label className="block mb-1 font-medium">Tipo de Movimentação:</label>
           <select
             onChange={(e) => setTipo(e.target.value as 'receita' | 'despesa' | 'todos')}
-            className="p-2 border rounded w-full sm:w-auto"
+            className="p-2 border rounded w-full"
           >
             <option value="todos">Todos</option>
             <option value="receita">Receitas</option>
@@ -240,11 +230,11 @@ const Relatorio: React.FC = () => {
           </select>
         </div>
 
-        <div>
+        <div className="flex-1 sm:max-w-xs">
           <label className="block mb-1 font-medium">Situação:</label>
           <select
             onChange={(e) => setSituacao(e.target.value as 'paga' | 'pendente' | 'todos')}
-            className="p-2 border rounded w-full sm:w-auto"
+            className="p-2 border rounded w-full"
           >
             <option value="todos">Todos</option>
             <option value="paga">Pago</option>
@@ -252,7 +242,7 @@ const Relatorio: React.FC = () => {
           </select>
         </div>
 
-        <div>
+        <div className="flex-1 sm:max-w-xs">
           <label className="block mb-1 font-medium">Mês:</label>
           <input
             type="number"
@@ -260,56 +250,95 @@ const Relatorio: React.FC = () => {
             onChange={(e) => setMes(Number(e.target.value))}
             min={1}
             max={12}
-            className="p-2 border rounded w-full sm:w-auto"
+            className="p-2 border rounded w-full"
           />
         </div>
 
-        <div>
+        <div className="flex-1 sm:max-w-xs">
           <label className="block mb-1 font-medium">Ano:</label>
           <input
             type="number"
             value={ano}
             onChange={(e) => setAno(Number(e.target.value))}
-            className="p-2 border rounded w-full sm:w-auto"
+            className="p-2 border rounded w-full"
           />
         </div>
       </div>
 
-      {/* Gráfico */}
+      {/* Gráfico e Detalhes */}
       {totalReceitas === 0 && totalDespesas === 0 ? (
-        <div className="text-center">Nenhum dado encontrado para o relatório.</div>
+        <div className="text-center text-xl">Nenhum dado disponível para o período selecionado.</div>
       ) : (
-        <div className="w-full max-w-2xl mx-auto mb-6">
-          <Chart type="bar" data={data} />
+        <div className="flex flex-col items-center gap-6">
+          {/* Gráfico */}
+          {/* Gráfico */}
+          <div className="w-full flex justify-center">
+            <div
+              className="w-full sm:max-w-md lg:max-w-3xl"
+              style={{ height: "300px" }}
+            >
+              <Chart
+                type="bar"
+                data={data}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: true, position: "top" },
+                  },
+                  scales: {
+                    x: { beginAtZero: true },
+                    y: { beginAtZero: true },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Detalhes das Movimentações */}
+          <div className="w-full max-w-4xl">
+            <h3 className="text-lg font-semibold mb-4 text-center">Detalhes das Movimentações</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border p-2">Descrição</th>
+                    <th className="border p-2">Valor</th>
+                    <th className="border p-2">Data</th>
+                    <th className="border p-2">Tipo</th>
+                    <th className="border p-2">Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dados.map((movimentacao, index) => (
+                    <tr key={index} className="hover:bg-gray-100">
+                      <td className="border p-2">{movimentacao.descricao}</td>
+                      <td className="border p-2">{movimentacao.valor.toFixed(2)}</td>
+                      <td className="border p-2">{formatarDataBrasileira(movimentacao.data)}</td>
+                      <td className="border p-2">
+                        {movimentacao.tipo === 'receita' ? 'Receita' : 'Despesa'}
+                      </td>
+                      <td className="border p-2">
+                        {movimentacao.situacao === 'paga' ? 'Pago' : 'Pendente'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Resumo */}
-      <div className="mt-6 text-center">
-        <p className="text-lg">Total de Receitas: R$ {totalReceitas.toFixed(2)}</p>
-        <p className="text-lg">Total de Despesas: R$ {totalDespesas.toFixed(2)}</p>
-        <p className="text-lg font-semibold">
-          Saldo: R$ {(totalReceitas - totalDespesas).toFixed(2)}
-        </p>
-      </div>
-
-      {/* Botão para gerar PDF */}
-      <div className="mt-8 text-center mb-10">
+      {/* Botão de Gerar PDF */}
+      <div className="text-center mt-6">
         <button
           onClick={gerarPDFRelatorio}
-          className="relative group bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
         >
-          <FaFileDownload />
-
-          {/* Tooltip */}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-700 text-white text-sm rounded py-1 px-3 z-10 shadow-md pointer-events-none">
-            Gerar PDF
-            {/* Seta do Tooltip */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-4 border-b-gray-700"></div>
-          </div>
+          <FaFileDownload className="inline mr-2" /> Gerar PDF
         </button>
       </div>
-
     </div>
   );
 };
