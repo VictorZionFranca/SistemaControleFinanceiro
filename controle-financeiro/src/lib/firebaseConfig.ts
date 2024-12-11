@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth"; // Importação do serviço de autenticação
 
 // Inicializa o Firebase usando variáveis de ambiente
 const firebaseConfig = {
@@ -17,4 +18,13 @@ const app = initializeApp(firebaseConfig);
 // Inicializa o Firestore
 const db = getFirestore(app);
 
-export { db };
+// Inicializa o Auth
+const auth = getAuth(app);
+
+// Configura a persistência de sessão para usar localStorage
+setPersistence(auth, browserLocalPersistence)
+  .catch((error) => {
+    console.error("Erro ao configurar persistência de login:", error);
+  });
+
+export { db, auth };
