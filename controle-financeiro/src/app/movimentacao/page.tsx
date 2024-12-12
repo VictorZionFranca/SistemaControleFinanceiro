@@ -1,15 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  collection,
-  getDocs,
-  doc,
-  deleteDoc,
-  updateDoc,
-} from 'firebase/firestore';
-import { db } from '../../lib/firebaseConfig';
+import { collection, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../../lib/firebaseConfig';
 import { FaEdit, FaTrashAlt } from 'react-icons/fa';
+import type { User } from 'firebase/auth';
 
 interface Movimentacao {
   id: string;
@@ -20,30 +16,41 @@ interface Movimentacao {
   despesaTipo?: string;
   meses?: number;
   situacao?: string;
+  uid?: string; // Adicionando o campo UID para associar com o usuário autenticado
 }
 
 export default function VerMovimentacoes() {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(null); // Estado para armazenar o usuário autenticado
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
-  const [selectedMovimentacao, setSelectedMovimentacao] =
-    useState<Movimentacao | null>(null);
+  const [selectedMovimentacao, setSelectedMovimentacao] = useState<Movimentacao | null>(null);
   const [editedDescricao, setEditedDescricao] = useState<string>('');
   const [editedValor, setEditedValor] = useState<number>(0);
   const [editedTipoDespesa, setEditedTipoDespesa] = useState<string>('');
   const [editedMeses, setEditedMeses] = useState<number | string>('');
   const [editedSituacao, setEditedSituacao] = useState<string>('');
 
-  // Fetch movimentacoes
+  // Fetch movimentacoes e autenticação de usuário
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+      }
+    });
+
     const fetchMovimentacoes = async () => {
       try {
+        if (!user) return; // Se não houver usuário logado, não faz a busca
+
         const querySnapshot = await getDocs(collection(db, 'movimentacoes'));
         const fetchedMovimentacoes: Movimentacao[] = [];
         querySnapshot.forEach((doc) => {
           const movimentacaoData = doc.data();
-          fetchedMovimentacoes.push({
+          const movimentacao: Movimentacao = {
             id: doc.id,
             tipo: movimentacaoData.tipo,
             valor: movimentacaoData.valor,
@@ -52,8 +59,14 @@ export default function VerMovimentacoes() {
             despesaTipo: movimentacaoData.despesaTipo || undefined,
             meses: movimentacaoData.meses || undefined,
             situacao: movimentacaoData.situacao || undefined,
-          });
+            uid: movimentacaoData.uid || '', // Adicionando o UID ao dado
+          };
+          // Adicionando apenas as movimentações do usuário logado
+          if (movimentacao.uid === user.uid) {
+            fetchedMovimentacoes.push(movimentacao);
+          }
         });
+
         setMovimentacoes(fetchedMovimentacoes);
       } catch (error) {
         console.error('Erro ao buscar movimentações:', error);
@@ -63,45 +76,47 @@ export default function VerMovimentacoes() {
     };
 
     fetchMovimentacoes();
-  }, []);
+    return () => unsubscribeAuth(); // Limpando o listener de autenticação
+  }, [user]); // Reexecuta a busca quando o usuário mudar
 
-  // Função para abrir o modal de edição
   const openModal = (movimentacao: Movimentacao) => {
-    setSelectedMovimentacao(movimentacao);
-    setEditedDescricao(movimentacao.descricao);
-    setEditedValor(movimentacao.valor);
-    setEditedTipoDespesa(movimentacao.despesaTipo || '');
-    setEditedMeses(movimentacao.meses || '');
-    setEditedSituacao(movimentacao.situacao || '');
-    setIsModalOpen(true);
+    if (movimentacao.uid === user?.uid) { // Garantindo que o usuário só edite suas movimentações
+      setSelectedMovimentacao(movimentacao);
+      setEditedDescricao(movimentacao.descricao);
+      setEditedValor(movimentacao.valor);
+      setEditedTipoDespesa(movimentacao.despesaTipo || '');
+      setEditedMeses(movimentacao.meses || '');
+      setEditedSituacao(movimentacao.situacao || '');
+      setIsModalOpen(true);
+    } else {
+      alert('Você não tem permissão para editar esta movimentação');
+    }
   };
 
-  // Função para fechar o modal de edição
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedMovimentacao(null);
   };
 
-  // Função para abrir o modal de exclusão
   const openDeleteModal = (movimentacao: Movimentacao) => {
-    setSelectedMovimentacao(movimentacao);
-    setIsDeleteModalOpen(true);
+    if (movimentacao.uid === user?.uid) { // Garantindo que o usuário só exclua suas movimentações
+      setSelectedMovimentacao(movimentacao);
+      setIsDeleteModalOpen(true);
+    } else {
+      alert('Você não tem permissão para excluir esta movimentação');
+    }
   };
 
-  // Função para fechar o modal de exclusão
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setSelectedMovimentacao(null);
   };
 
-  // Função para excluir a movimentação
   const handleDelete = async () => {
     if (selectedMovimentacao) {
       try {
         await deleteDoc(doc(db, 'movimentacoes', selectedMovimentacao.id));
-        setMovimentacoes((prev) =>
-          prev.filter((mov) => mov.id !== selectedMovimentacao.id)
-        );
+        setMovimentacoes((prev) => prev.filter((mov) => mov.id !== selectedMovimentacao.id));
         closeDeleteModal();
       } catch (error) {
         console.error('Erro ao excluir movimentação:', error);
@@ -109,31 +124,21 @@ export default function VerMovimentacoes() {
     }
   };
 
-  // Função para atualizar a movimentação
   const handleUpdate = async () => {
     if (selectedMovimentacao) {
       try {
-        const movimentacaoRef = doc(
-          db,
-          'movimentacoes',
-          selectedMovimentacao.id
-        );
+        const movimentacaoRef = doc(db, 'movimentacoes', selectedMovimentacao.id);
 
-        // Converter meses para número apenas se o valor não for vazio
-        const mesesNumber =
-          editedTipoDespesa === 'fixa' && editedMeses !== ''
-            ? Number(editedMeses)
-            : undefined;
+        const mesesNumber = editedTipoDespesa === 'fixa' && editedMeses !== '' ? Number(editedMeses) : undefined;
 
         const updatedMovimentacao: Partial<Movimentacao> = {
           descricao: editedDescricao,
           valor: editedValor,
           despesaTipo: editedTipoDespesa,
-          meses: mesesNumber, // Somente adiciona o valor se for definido
+          meses: mesesNumber,
           situacao: editedSituacao || undefined,
         };
 
-        // Remover campos que não são necessários
         Object.keys(updatedMovimentacao).forEach((key) => {
           if (updatedMovimentacao[key as keyof Movimentacao] === undefined) {
             delete updatedMovimentacao[key as keyof Movimentacao];
@@ -142,12 +147,9 @@ export default function VerMovimentacoes() {
 
         await updateDoc(movimentacaoRef, updatedMovimentacao);
 
-        // Atualizando o estado
         setMovimentacoes((prev) =>
           prev.map((mov) =>
-            mov.id === selectedMovimentacao.id
-              ? { ...mov, ...updatedMovimentacao }
-              : mov
+            mov.id === selectedMovimentacao.id ? { ...mov, ...updatedMovimentacao } : mov
           )
         );
 
@@ -157,7 +159,7 @@ export default function VerMovimentacoes() {
       }
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-8 text-black">
       <h2 className="text-2xl font-semibold mb-6 text-center">

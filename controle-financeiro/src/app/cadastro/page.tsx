@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../../lib/firebaseConfig';
+import type { User } from 'firebase/auth';
 
 // Interface para representar os dados da movimentação
 interface Movimentacao {
@@ -13,6 +15,7 @@ interface Movimentacao {
     despesaTipo?: 'fixa' | 'variavel';
     meses?: number;
     situacao?: 'pago' | 'pendente';
+    uid?: string;
 }
 
 export default function CadastroMovimentacao() {
@@ -22,8 +25,22 @@ export default function CadastroMovimentacao() {
         data: '',
         descricao: '',
     });
+    const [user, setUser] = useState<User | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showNotification, setShowNotification] = useState<boolean>(false);
+
+    // Obter o usuário autenticado
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                setUser(currentUser);
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => unsubscribe();
+    }, []);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -31,21 +48,19 @@ export default function CadastroMovimentacao() {
         const { name, value } = e.target;
 
         setFormData((prev) => {
-            // Se o tipo de despesa for "variavel", define automaticamente como "pago"
             if (name === 'despesaTipo' && value === 'variavel') {
                 return {
                     ...prev,
                     [name]: value,
-                    situacao: 'pago', // Define como pago automaticamente
+                    situacao: 'pago', // Define automaticamente como pago
                 };
             }
 
-            // Caso a despesa seja "fixa", permite a escolha da situação
             if (name === 'despesaTipo' && value === 'fixa') {
                 return {
                     ...prev,
                     [name]: value,
-                    situacao: 'pendente', // Restaura o padrão para "pendente"
+                    situacao: 'pendente', // Define automaticamente como pendente
                 };
             }
 
@@ -64,8 +79,19 @@ export default function CadastroMovimentacao() {
             return;
         }
 
+        if (!user) {
+            setError('Você precisa estar autenticado para cadastrar movimentações.');
+            return;
+        }
+
         try {
-            await addDoc(collection(db, 'movimentacoes'), formData);
+            // Adicionar o `uid` do usuário autenticado à movimentação
+            const dataToSave = {
+                ...formData,
+                uid: user.uid, // Associar ao usuário autenticado
+            };
+
+            await addDoc(collection(db, 'movimentacoes'), dataToSave);
 
             setShowNotification(true);
             setError(null);
@@ -126,24 +152,6 @@ export default function CadastroMovimentacao() {
                                     <option value="variavel">Variável</option>
                                 </select>
                             </div>
-
-                            {formData.despesaTipo === 'fixa' && (
-                                <div className="mb-4">
-                                    <label htmlFor="situacao" className="block text-sm font-medium text-gray-700">
-                                        Situação da Despesa
-                                    </label>
-                                    <select
-                                        id="situacao"
-                                        name="situacao"
-                                        value={formData.situacao || 'pendente'}
-                                        onChange={handleChange}
-                                        className="mt-1 p-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                    >
-                                        <option value="pendente">Pendente</option>
-                                        <option value="pago">Pago</option>
-                                    </select>
-                                </div>
-                            )}
 
                             {formData.despesaTipo === 'fixa' && (
                                 <div className="mb-4">

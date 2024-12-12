@@ -2,19 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
-import { useAuth } from '../lib/useAuth'; // Hook personalizado para autenticação
+import { db } from '../../lib/firebaseConfig';
+import { useAuth } from '../../lib/useAuth'; // Hook personalizado para autenticação
 
-export default function Home() {
+export default function UserProfile() {
   const { user } = useAuth(); // Obtém o usuário autenticado
   const [resumo, setResumo] = useState({
     receitas: 0,
     despesas: 0,
-  });
-
-  const [estatisticas, setEstatisticas] = useState({
-    despesasFixas: 0,
-    despesasVariaveis: 0,
   });
 
   const [loading, setLoading] = useState(true); // Estado para controle de carregamento
@@ -32,14 +27,12 @@ export default function Home() {
 
         let totalReceitas = 0;
         let totalDespesas = 0;
-        let despesasFixas = 0;
-        let despesasVariaveis = 0;
 
         querySnapshot.forEach((doc) => {
           const movimentacao = doc.data();
           console.log('Movimentação encontrada:', movimentacao); // Verifique os dados de cada movimentação
 
-          const { tipo, valor, despesaTipo } = movimentacao;
+          const { tipo, valor } = movimentacao;
 
           // Garantir que o valor seja um número válido
           const valorNumerico = parseFloat(valor);
@@ -52,12 +45,6 @@ export default function Home() {
             totalReceitas += valorNumerico;
           } else if (tipo === 'despesa') {
             totalDespesas += valorNumerico;
-            // Verifique se o despesaTipo não está vazio
-            if (despesaTipo === 'fixa') {
-              despesasFixas += 1;
-            } else if (despesaTipo === 'variavel') {
-              despesasVariaveis += 1;
-            }
           }
         });
 
@@ -65,11 +52,6 @@ export default function Home() {
         setResumo({
           receitas: totalReceitas,
           despesas: totalDespesas,
-        });
-
-        setEstatisticas({
-          despesasFixas,
-          despesasVariaveis,
         });
       } catch (error) {
         console.error('Erro ao buscar movimentações:', error);
@@ -99,12 +81,19 @@ export default function Home() {
 
   return (
     <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-8 text-black">Dashboard Financeiro</h1>
+      <h1 className="text-3xl font-bold text-center mb-8 text-black">Perfil do Usuário</h1>
 
-      {/* Resumo do Mês */}
-      <section className="bg-gray-100 rounded-lg shadow-md p-6 mb-8 text-black">
-        <h2 className="text-2xl font-semibold mb-4">Resumo do Mês</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Informações do perfil do usuário */}
+      <div className="bg-white shadow-md rounded-lg p-6 mb-6 text-black">
+        <h2 className="text-2xl font-semibold text-gray-700">Informações Pessoais</h2>
+        <p className="text-gray-600 mt-4"><strong>Nome:</strong> {user?.displayName || "Não informado"}</p>
+        <p className="text-gray-600 mt-2"><strong>Email:</strong> {user?.email}</p>
+      </div>
+
+      {/* Resumo financeiro do usuário */}
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <h2 className="text-2xl font-semibold text-gray-700">Resumo Financeiro</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-gray-700">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-lg font-medium">Total de Receitas</p>
             <p className="text-2xl font-bold text-green-500">R$ {resumo.receitas.toFixed(2)}</p>
@@ -120,22 +109,7 @@ export default function Home() {
             </p>
           </div>
         </div>
-      </section>
-
-      {/* Estatísticas de Despesas */}
-      <section className="bg-gray-100 rounded-lg shadow-md p-6 text-black">
-        <h2 className="text-2xl font-semibold mb-4">Estatísticas de Despesas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-lg font-medium">Despesas Fixas</p>
-            <p className="text-2xl font-bold">{estatisticas.despesasFixas}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-lg font-medium">Despesas Variáveis</p>
-            <p className="text-2xl font-bold">{estatisticas.despesasVariaveis}</p>
-          </div>
-        </div>
-      </section>
+      </div>
     </main>
   );
 }

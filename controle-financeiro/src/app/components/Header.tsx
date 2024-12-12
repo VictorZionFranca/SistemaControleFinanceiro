@@ -1,12 +1,13 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
-import { auth } from "../../lib/firebaseConfig"; // Certifique-se de ter o auth configurado
-import { useAuth } from "../../lib/useAuth"; // Importe o hook que fornece o estado de autenticação
+import { auth } from "../../lib/firebaseConfig";
+import { useAuth } from "../../lib/useAuth"; 
 import { FaRegUserCircle, FaRegUser } from "react-icons/fa";
 import { MdLogout } from "react-icons/md";
+import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 
 interface HeaderProps {
   className?: string;
@@ -14,7 +15,7 @@ interface HeaderProps {
 
 export default function Header({ className }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { user } = useAuth(); // Agora o user é obtido através do useAuth
+  const { user } = useAuth(); // Obtém o usuário autenticado
   const router = useRouter();
 
   // Função para logout
@@ -42,6 +43,21 @@ export default function Header({ className }: HeaderProps) {
     };
   }, []);
 
+  // Função de alternância para dropdown, para também suportar teclado
+  const toggleDropdown = () => {
+    setDropdownOpen((prev) => !prev);
+  };
+
+  const closeDropdown = () => {
+    setDropdownOpen(false);
+  };
+
+  const handleProfileClick = () => {
+    // Fecha o dropdown ao clicar no perfil
+    closeDropdown();
+    router.push("/perfil");
+  };
+
   return (
     <header className={`bg-gray-800 text-white p-4 ${className}`}>
       <div className="flex justify-between items-center">
@@ -50,11 +66,18 @@ export default function Header({ className }: HeaderProps) {
         {user && (
           <div className="relative dropdown mr-4">
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+              onClick={toggleDropdown}
+              onKeyDown={(e) => e.key === "Enter" && toggleDropdown()}
+              aria-expanded={dropdownOpen}
               className="text-white flex items-center"
             >
               <FaRegUserCircle className="mr-2 text-xl" />
               {user.displayName || "Usuário"} {/* Exibe o nome do usuário */}
+              {dropdownOpen ? (
+                <IoIosArrowUp className="ml-2 text-xl" />
+              ) : (
+                <IoIosArrowDown className="ml-2 text-xl" />
+              )}
             </button>
 
             {dropdownOpen && (
@@ -62,7 +85,7 @@ export default function Header({ className }: HeaderProps) {
                 <ul className="space-y-2 py-2 px-4">
                   <li>
                     <button
-                      onClick={() => router.push("/perfil")}
+                      onClick={handleProfileClick} // Fecha o dropdown e redireciona para o perfil
                       className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
                       <FaRegUser className="mr-2" />
@@ -72,6 +95,7 @@ export default function Header({ className }: HeaderProps) {
                   <li>
                     <button
                       onClick={handleLogout}
+                      onBlur={closeDropdown}
                       className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
                       <MdLogout className="mr-2" />

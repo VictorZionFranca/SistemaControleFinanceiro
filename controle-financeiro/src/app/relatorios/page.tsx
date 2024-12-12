@@ -7,8 +7,8 @@ import jsPDF from 'jspdf';
 import { DocumentData } from 'firebase/firestore';
 import { FaFileDownload } from 'react-icons/fa';
 import dynamic from 'next/dynamic';
+import { getAuth } from 'firebase/auth';
 const Chart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Chart), { ssr: false });
-
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -20,6 +20,7 @@ type Movimentacao = {
   situacao: 'paga' | 'pendente';
   despesaTipo?: string;
   meses?: number[];
+  uid: string; // Adicionando o campo uid
 };
 
 const Relatorio: React.FC = () => {
@@ -28,9 +29,20 @@ const Relatorio: React.FC = () => {
   const [situacao, setSituacao] = useState<'paga' | 'pendente' | 'todos'>('todos');
   const [mes, setMes] = useState<number>(new Date().getMonth() + 1);
   const [ano, setAno] = useState<number>(new Date().getFullYear());
+  const [userUid, setUserUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (user) {
+      setUserUid(user.uid); // Guardando o uid do usuário autenticado
+    }
+  }, []);
 
   useEffect(() => {
     const fetchDados = async () => {
+      if (!userUid) return; // Se não há usuário autenticado, não faz nada
+
       let rawData: DocumentData[] = [];
       if (tipo === 'todos') {
         rawData = await getRelatorioMensal(mes, ano);
@@ -46,13 +58,16 @@ const Relatorio: React.FC = () => {
         situacao: item.situacao ?? 'paga',
         despesaTipo: item.despesaTipo ?? '',
         meses: Array.isArray(item.meses) ? item.meses : [],
+        uid: item.uid ?? '', // Supondo que cada movimentação tenha o campo uid
       }));
 
-      // Filtrando os dados conforme os filtros aplicados
-      let filteredData = data;
+      // Filtrando os dados conforme o filtro do tipo e também pelo uid do usuário
+      let filteredData = data.filter((item) => item.uid === userUid);
+
       if (situacao !== 'todos') {
         filteredData = filteredData.filter((item) => item.situacao.toLowerCase() === situacao.toLowerCase());
       }
+
       filteredData = filteredData.filter((item) => {
         const itemDate = new Date(item.data);
         return itemDate.getMonth() + 1 === mes && itemDate.getFullYear() === ano;
@@ -62,7 +77,7 @@ const Relatorio: React.FC = () => {
     };
 
     fetchDados();
-  }, [tipo, situacao, mes, ano]);
+  }, [tipo, situacao, mes, ano, userUid]);
 
   const totalReceitas = dados.filter((mov) => mov.tipo === 'receita').reduce((acc, mov) => acc + mov.valor, 0);
   const totalDespesas = dados.filter((mov) => mov.tipo === 'despesa').reduce((acc, mov) => acc + mov.valor, 0);
