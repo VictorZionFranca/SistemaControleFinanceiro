@@ -60,8 +60,8 @@ export default function Header({ className }: HeaderProps) {
 
   return (
     <header className={`bg-gray-800 text-white p-4 ${className}`}>
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Sistema Financeiro</h1>
+      <div className="flex justify-between items-center mb-1">
+        <h1 className="text-lg font-bold">Sistema Financeiro</h1>
 
         {user && (
           <div className="relative dropdown mr-4">
@@ -71,12 +71,12 @@ export default function Header({ className }: HeaderProps) {
               aria-expanded={dropdownOpen}
               className="text-white flex items-center"
             >
-              <FaRegUserCircle className="mr-2 text-xl" />
+              <FaRegUserCircle className="mr-2 text-lg" />
               {user.displayName || "Usuário"} {/* Exibe o nome do usuário */}
               {dropdownOpen ? (
-                <IoIosArrowUp className="ml-2 text-xl" />
+                <IoIosArrowUp className="ml-2 text-lg" />
               ) : (
-                <IoIosArrowDown className="ml-2 text-xl" />
+                <IoIosArrowDown className="ml-2 text-lg" />
               )}
             </button>
 
