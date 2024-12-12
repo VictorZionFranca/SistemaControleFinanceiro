@@ -1,4 +1,4 @@
-"use client"; // Diretiva para tratar como Client Component
+'use client'; // Diretiva para tratar como Client Component
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -33,8 +33,7 @@ export default function Register() {
                 createdAt: new Date().toISOString(),
             });
 
-            // Redireciona para o dashboard
-            router.push("/dashboard");
+            router.push("/");
         } catch (err: unknown) {
             if (err instanceof FirebaseError) {
                 setError(err.message); // Mensagem de erro específica do Firebase
@@ -45,13 +44,14 @@ export default function Register() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 text-black">
-            <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
-                <h1 className="text-2xl font-bold text-center mb-4">Registrar</h1>
-                <form onSubmit={handleRegister} className="space-y-4">
+        <div className="flex items-center justify-center mt-16 bg-gray-100 text-black">
+            <div className="w-full max-w-sm p-8 bg-white rounded-lg shadow-lg">
+                <h1 className="text-3xl font-semibold text-center text-gray-800 mb-6">Registrar</h1>
+                <form onSubmit={handleRegister} className="space-y-6">
                     {error && <p className="text-red-500 text-sm">{error}</p>}
+                    
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                             Nome
                         </label>
                         <input
@@ -59,12 +59,13 @@ export default function Register() {
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full px-4 py-2 mt-1 border rounded-md focus:ring focus:ring-indigo-300"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             required
                         />
                     </div>
+
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                             E-mail
                         </label>
                         <input
@@ -72,12 +73,13 @@ export default function Register() {
                             id="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-2 mt-1 border rounded-md focus:ring focus:ring-indigo-300"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             required
                         />
                     </div>
+
                     <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                             Senha
                         </label>
                         <input
@@ -85,18 +87,19 @@ export default function Register() {
                             id="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-2 mt-1 border rounded-md focus:ring focus:ring-indigo-300"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             required
                         />
                     </div>
+
                     <button
                         type="submit"
-                        className="w-full px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:ring focus:ring-indigo-300"
+                        className="w-full px-4 py-3 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
                     >
                         Registrar
                     </button>
                 </form>
-                <div className="mt-4 text-center">
+                <div className="mt-6 text-center">
                     <p className="text-sm text-gray-600">
                         Já tem uma conta?{" "}
                         <Link href="/login" className="text-indigo-600 hover:text-indigo-700">

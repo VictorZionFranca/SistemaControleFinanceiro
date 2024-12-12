@@ -81,7 +81,7 @@ export default function UserProfile() {
 
   return (
     <main className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-8 text-black">Perfil do Usuário</h1>
+      <h1 className="text-3xl font-bold text-center mb-8 text-black">Perfil</h1>
 
       {/* Informações do perfil do usuário */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6 text-black">

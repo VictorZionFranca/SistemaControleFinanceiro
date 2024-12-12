@@ -52,12 +52,6 @@ export default function Header({ className }: HeaderProps) {
     setDropdownOpen(false);
   };
 
-  const handleProfileClick = () => {
-    // Fecha o dropdown ao clicar no perfil
-    closeDropdown();
-    router.push("/perfil");
-  };
-
   return (
     <header className={`bg-gray-800 text-white p-4 ${className}`}>
       <div className="flex justify-between items-center">
@@ -85,7 +79,8 @@ export default function Header({ className }: HeaderProps) {
                 <ul className="space-y-2 py-2 px-4">
                   <li>
                     <button
-                      onClick={handleProfileClick} // Fecha o dropdown e redireciona para o perfil
+                      onClick={() => router.push("/perfil")}
+                      onBlur={closeDropdown} // Fecha o dropdown ao sair do botão
                       className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
                       <FaRegUser className="mr-2" />
