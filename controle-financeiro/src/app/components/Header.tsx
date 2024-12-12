@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "../../lib/firebaseConfig"; // Certifique-se de ter o auth configurado
 import { useAuth } from "../../lib/useAuth"; // Importe o hook que fornece o estado de autenticação
+import { FaRegUserCircle, FaRegUser } from "react-icons/fa";
+import { MdLogout } from "react-icons/md";
 
 interface HeaderProps {
   className?: string;
@@ -25,17 +27,33 @@ export default function Header({ className }: HeaderProps) {
     }
   };
 
+  // Função para fechar o dropdown quando clicar fora dele
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target && !target.closest(".dropdown")) {
+      setDropdownOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
   return (
     <header className={`bg-gray-800 text-white p-4 ${className}`}>
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Sistema Financeiro</h1>
 
         {user && (
-          <div className="relative">
+          <div className="relative dropdown mr-4">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="text-white"
+              className="text-white flex items-center"
             >
+              <FaRegUserCircle className="mr-2 text-xl" />
               {user.displayName || "Usuário"} {/* Exibe o nome do usuário */}
             </button>
 
@@ -45,17 +63,19 @@ export default function Header({ className }: HeaderProps) {
                   <li>
                     <button
                       onClick={() => router.push("/perfil")}
-                      className="block w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md"
+                      className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
+                      <FaRegUser className="mr-2" />
                       Perfil
                     </button>
                   </li>
                   <li>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md"
+                      className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
-                      Sair
+                      <MdLogout className="mr-2" />
+                      Logout
                     </button>
                   </li>
                 </ul>
