@@ -52,6 +52,12 @@ export default function Header({ className }: HeaderProps) {
     setDropdownOpen(false);
   };
 
+  // Função para navegar para o perfil e fechar o dropdown
+  const navigateToProfile = () => {
+    router.push("/perfil");
+    closeDropdown(); // Fecha o dropdown ao clicar em "Perfil"
+  };
+
   return (
     <header className={`bg-gray-800 text-white p-4 ${className}`}>
       <div className="flex justify-between items-center">
@@ -79,7 +85,7 @@ export default function Header({ className }: HeaderProps) {
                 <ul className="space-y-2 py-2 px-4">
                   <li>
                     <button
-                      onClick={() => router.push("/perfil")}
+                      onClick={navigateToProfile} // Navega para o perfil e fecha o dropdown
                       onBlur={closeDropdown} // Fecha o dropdown ao sair do botão
                       className="w-full text-left py-1 px-2 hover:bg-gray-200 rounded-md flex items-center"
                     >
